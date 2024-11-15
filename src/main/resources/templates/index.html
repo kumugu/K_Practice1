@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>학생정보관리프로그램</title>
+    <link rel="stylesheet" href="/src/main/resources/static/css/styles.css">
+</head>
+<body>
+    <h1>Student Management</h1>
+    <form action="/students" method="post">
+        <input type="text" name="name" placeholder="Name" required> 
+        <input type="text" name="major" placeholder="Major" required> 
+        <input type="text" name="phone" placeholder="Phone" required> 
+        <input type="text" name="address" placeholder="Address" required> 
+        <button type="submit">학생등록</button>
+    </form>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>아이디</th>
+                <th>이  름</th>
+                <th>학  과</th>
+                <th>연락처</th>
+                <th>주  소</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            <tr th:each="student : ${students}">
+                <td thj:text="${student.id}"></td>
+                <td thj:text="${student.name}"></td>
+                <td thj:text="${student.major}"></td>
+                <td thj:text="${student.phone}"></td>
+                <td thj:text="${student.address}"></td>
+                <td>
+                    <a href="@{'/students' + ${student.id}}">수정</a>
+                    <a href="@{'/students/delete/' + ${student.id}}">삭제</a>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <script src="/src/main/resources/static/js/scripts.js"></script>
+</body>
+</html>
