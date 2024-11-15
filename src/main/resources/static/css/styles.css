@@ -1,0 +1,48 @@
+/*  stylese.css */
+
+body {
+    font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+    background-color: rgb(115, 160, 145);
+    margin: 0;
+    padding: 0;
+}
+
+h1 {
+    text-align: center;
+    color: rgb(158, 116, 64);
+}
+form, table {
+    width: 80%;
+    margin: 20px auto;
+    background-color: blanchedalmond;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(red, green, blue, 1);
+}
+
+input, button {
+    display: block;
+    width: calc(100% - 20px);
+    margin: 10px 0;
+    padding: 10px;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+th, td {
+    padding: 12px;
+    border: 1px solid #ddd;
+    text-align: left;
+}
+
+th {
+    background-color: #f4b400;
+    color: white;
+}
+
+tr:hover {
+    background-color: #f1f1f1;
+}
