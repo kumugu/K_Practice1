@@ -35,6 +35,9 @@ public class MainUI extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
+
+
+
         // 메뉴바 생성
         createMenuBar();
 
@@ -251,6 +254,19 @@ public class MainUI extends JFrame {
             }
         }
 
+        // LoginUI 패널 초기화
+        if (panelName.equals(LOGIN_PANEL)) {
+            Component[] components = centerPanel.getComponents();
+            for (Component component : components) {
+                if (component instanceof LoginUI) {
+                    LoginUI loginUI = (LoginUI) component;
+                    loginUI.clearFields(); // 텍스트 필드 초기화
+                    break;
+                }
+            }
+        }
+
+        // 패널 전환
         cl.show(centerPanel, panelName);
     }
 

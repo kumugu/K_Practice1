@@ -14,7 +14,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 public class LoginUI extends JPanel {
-
+    private JTextField usernameField; // 전역 변수로 선언
+    private JPasswordField passwordField; // 전역 변수로 선언
     private MainUI mainUI; // MainUI 참조
 
     public LoginUI(MainUI mainUI) {
@@ -46,8 +47,9 @@ public class LoginUI extends JPanel {
         gbc.gridy++;
         cardPanel.add(new JLabel("아이디:"), gbc);
 
+        // 전역 변수 usernameField를 초기화
         gbc.gridx = 1;
-        JTextField usernameField = new JTextField(15);
+        usernameField = new JTextField(15); // 전역 변수 사용
         cardPanel.add(usernameField, gbc);
 
         // 비밀번호 입력
@@ -55,9 +57,11 @@ public class LoginUI extends JPanel {
         gbc.gridy++;
         cardPanel.add(new JLabel("비밀번호:"), gbc);
 
+        // 전역 변수 passwordField를 초기화
         gbc.gridx = 1;
-        JPasswordField passwordField = new JPasswordField(15);
+        passwordField = new JPasswordField(15); // 전역 변수 사용
         cardPanel.add(passwordField, gbc);
+
 
         // 버튼
         gbc.gridx = 0;
@@ -105,6 +109,17 @@ public class LoginUI extends JPanel {
             MainUI.showPanel(MainUI.REGISTER_PANEL);  // 회원가입 화면으로 전환
         });
     }
+
+    // 필드 초기화 메서드
+    public void clearFields() {
+        if (usernameField != null) {
+            usernameField.setText("");
+        }
+        if (passwordField != null) {
+            passwordField.setText("");
+        }
+    }
+
 
     // 로그인 검증 메소드
     private boolean isValidLogin(String username, String password) {
