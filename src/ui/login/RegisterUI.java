@@ -14,6 +14,12 @@ import java.sql.SQLException;
 
 public class RegisterUI extends JPanel {
 
+    private JTextField usernameField;
+    private JPasswordField passwordField;
+    private JPasswordField confirmPasswordField;
+    private JTextField nameField;
+    private JTextField contactField;
+
     public RegisterUI(JFrame frame) {
         setLayout(new BorderLayout());
 
@@ -38,7 +44,7 @@ public class RegisterUI extends JPanel {
         gbc.gridy = 0;
         centerPanel.add(new JLabel("아이디:"), gbc);
 
-        JTextField usernameField = new JTextField(15);
+        usernameField = new JTextField(15); // 필드 초기화
         gbc.gridx = 1;
         centerPanel.add(usernameField, gbc);
 
@@ -67,7 +73,7 @@ public class RegisterUI extends JPanel {
         gbc.gridy = 2;
         centerPanel.add(new JLabel("비밀번호:"), gbc);
 
-        JPasswordField passwordField = new JPasswordField(15);
+        passwordField = new JPasswordField(15); // 필드 초기화
         gbc.gridx = 1;
         gbc.insets = new Insets(5, 5, 5, 5); // 기본 여백으로 되돌림
         centerPanel.add(passwordField, gbc);
@@ -77,7 +83,7 @@ public class RegisterUI extends JPanel {
         gbc.gridy = 3;
         centerPanel.add(new JLabel("비밀번호 확인:"), gbc);
 
-        JPasswordField confirmPasswordField = new JPasswordField(15);
+        confirmPasswordField = new JPasswordField(15); // 필드 초기화
         gbc.gridx = 1;
         centerPanel.add(confirmPasswordField, gbc);
 
@@ -86,7 +92,7 @@ public class RegisterUI extends JPanel {
         gbc.gridy = 4;
         centerPanel.add(new JLabel("이름:"), gbc);
 
-        JTextField nameField = new JTextField(15);
+        nameField = new JTextField(15); // 필드 초기화
         gbc.gridx = 1;
         centerPanel.add(nameField, gbc);
 
@@ -95,7 +101,7 @@ public class RegisterUI extends JPanel {
         gbc.gridy = 5;
         centerPanel.add(new JLabel("연락처:"), gbc);
 
-        JTextField contactField = new JTextField(15);
+        contactField = new JTextField(15); // 필드 초기화
         gbc.gridx = 1;
         centerPanel.add(contactField, gbc);
 
@@ -109,7 +115,7 @@ public class RegisterUI extends JPanel {
         gbc.anchor = GridBagConstraints.WEST; // 왼쪽 정렬
         centerPanel.add(backButton, gbc);
 
-// 회원가입 버튼
+        // 회원가입 버튼
         JButton registerButton = new JButton("회원가입");
         registerButton.addActionListener(e -> {
             String username = usernameField.getText();
@@ -125,25 +131,26 @@ public class RegisterUI extends JPanel {
             } else if (isUsernameExists(username)) {
                 JOptionPane.showMessageDialog(this, "이미 존재하는 아이디입니다.");
             } else {
-                // 비밀번호 해싱 후 DB에 저장 (간단한 예시로 해시 사용)
+                // 비밀번호 해싱 후 DB에 저장
                 String hashedPassword = hashPassword(password);
 
                 // DB에 사용자 등록 로직을 추가해야 합니다.
                 if (registerUser(username, hashedPassword, name, contact)) {
                     JOptionPane.showMessageDialog(this, "회원가입이 완료되었습니다!");
                     MainUI.showPanel(MainUI.LOGIN_PANEL); // 로그인 화면으로 전환
+
+                    // 텍스트 필드 초기화
+                    clearFields();
                 } else {
                     JOptionPane.showMessageDialog(this, "회원가입에 실패했습니다.");
                 }
             }
         });
+
         gbc.gridx = 1;
         gbc.insets = new Insets(10, 10, 10, 5); // 여백 조정
         gbc.anchor = GridBagConstraints.EAST; // 오른쪽 정렬
         centerPanel.add(registerButton, gbc);
-
-
-
 
         // 중앙 패널 추가
         add(centerPanel, BorderLayout.CENTER);
@@ -153,6 +160,15 @@ public class RegisterUI extends JPanel {
         bottomEmptyPanel.setBackground(new Color(153, 50, 205));
         bottomEmptyPanel.setPreferredSize(new Dimension(100, 100)); // 적절한 크기 설정
         add(bottomEmptyPanel, BorderLayout.SOUTH);
+    }
+
+    // 텍스트 필드 초기화 메소드
+    public void clearFields() {
+        usernameField.setText("");
+        passwordField.setText("");
+        confirmPasswordField.setText("");
+        nameField.setText("");
+        contactField.setText("");
     }
 
     // 아이디 중복 여부 확인 메소드

@@ -90,10 +90,15 @@ public class LoginUI extends JPanel {
                 JOptionPane.showMessageDialog(this, "로그인 성공!");
                 mainUI.loginSuccess(); // 로그인 성공 시 호출
                 MainUI.showPanel(MainUI.LOBBY_PANEL);  // 로그인 성공 후 LobbyUI로 전환
+
+                // 로그인 성공 후 아이디와 비밀번호 필드 초기화
+                usernameField.setText("");
+                passwordField.setText("");
             } else {
                 JOptionPane.showMessageDialog(this, "아이디 또는 비밀번호가 잘못되었습니다.");
             }
         });
+
 
         // 회원가입 버튼 이벤트 처리
         registerButton.addActionListener(e -> {

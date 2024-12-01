@@ -237,21 +237,39 @@ public class MainUI extends JFrame {
      * @param panelName 표시할 패널 이름
      */
     public static void showPanel(String panelName) {
-        CardLayout layout = (CardLayout) centerPanel.getLayout();
-        layout.show(centerPanel, panelName);
+        CardLayout cl = (CardLayout) (centerPanel.getLayout());
+
+        // RegisterUI 패널 초기화
+        if (panelName.equals(REGISTER_PANEL)) {
+            Component[] components = centerPanel.getComponents();
+            for (Component component : components) {
+                if (component instanceof RegisterUI) {
+                    RegisterUI registerUI = (RegisterUI) component;
+                    registerUI.clearFields(); // 텍스트 필드 초기화
+                    break;
+                }
+            }
+        }
+
+        cl.show(centerPanel, panelName);
     }
+
 
     /**
      * 메인 메서드
      * - 애플리케이션 실행.
      */
     public static void main(String[] args) {
-        try {
-            new MainUI();
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
+        SwingUtilities.invokeLater(() -> {
+            try {
+                new MainUI();
+            } catch (SQLException e) {
+                e.printStackTrace();
+                JOptionPane.showMessageDialog(null, "데이터베이스 연결에 실패했습니다.", "오류", JOptionPane.ERROR_MESSAGE);
+            }
+        });
     }
+
 
     /**
      * 로그인 성공 시 호출되는 메서드
