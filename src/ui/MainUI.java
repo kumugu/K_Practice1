@@ -27,6 +27,7 @@ public class MainUI extends JFrame {
 
     private static JPanel centerPanel; // 화면 전환을 관리할 중앙 패널
     private boolean isLoggedIn = false; // 로그인 상태를 저장하는 변수
+    private Integer currentUserRoleId = null; // role_id를 저장
 
     public MainUI() throws SQLException {
         // 기본 설정
@@ -35,12 +36,8 @@ public class MainUI extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
-
-
-
         // 메뉴바 생성
         createMenuBar();
-
 
         // 메인 콘텐츠 패널 설정
         JPanel contentPane = new JPanel(new BorderLayout());
@@ -53,7 +50,7 @@ public class MainUI extends JFrame {
         // 패널 추가
         centerPanel.add(new LoginUI(this), LOGIN_PANEL);
         centerPanel.add(new RegisterUI(this), REGISTER_PANEL);
-        centerPanel.add(new LobbyUI(), LOBBY_PANEL);
+        centerPanel.add(new LobbyUI(this), LOBBY_PANEL);
         centerPanel.add(new SalesUI(), SALES_PANEL);
         centerPanel.add(new ManagerUI(), MANAGER_PANEL);
         centerPanel.add(new ProductManagementUI(), PRODUCTS_PANEL);
@@ -64,6 +61,13 @@ public class MainUI extends JFrame {
 
         setVisible(true); // 화면 표시
     }
+
+    // 로그인 성공 시 role_id 저장
+    public void loginSuccess(int userRoleId) {
+        isLoggedIn = true;
+        currentUserRoleId = userRoleId; // 로그인한 사용자의 역할 ID 저장
+    }
+
 
     /**
      * 메뉴바 생성
@@ -155,12 +159,21 @@ public class MainUI extends JFrame {
 
         JMenuItem managerItem = new JMenuItem("관리자 메뉴");
         managerItem.addActionListener(e -> {
-            if (isUserLoggedIn()) {
-                EventManager.getInstance().notifyListeners(); // 갱신 이벤트 발생
-                showPanel(MANAGER_PANEL);
-            } else {
+            if (!isUserLoggedIn()) {
                 JOptionPane.showMessageDialog(null, "먼저 로그인해주세요.");
                 showPanel(LOGIN_PANEL);
+                return;
+            }
+
+            // role_id가 3인 경우(매니저)에만 접근 허용
+            if (currentUserRoleId != null && currentUserRoleId == 3) {
+                EventManager.getInstance().notifyListeners();
+                showPanel(MANAGER_PANEL);
+            } else {
+                JOptionPane.showMessageDialog(null,
+                        "관리자 메뉴는 매니저만 접근 가능합니다.",
+                        "접근 제한",
+                        JOptionPane.WARNING_MESSAGE);
             }
         });
         workMenu.add(managerItem);
@@ -193,7 +206,10 @@ public class MainUI extends JFrame {
         setJMenuBar(menuBar); // 메뉴바 설정
     }
 
-
+    // role_id getter 추가
+    public Integer getCurrentUserRoleId() {
+        return currentUserRoleId; // 현재 로그인된 사용자의 역할 ID 반환
+    }
 
     /**
      * 현재 패널을 인쇄하는 메서드
@@ -287,11 +303,6 @@ public class MainUI extends JFrame {
     }
 
 
-    /**
-     * 로그인 성공 시 호출되는 메서드
-     * - 로그인 상태를 true로 설정
-     */
-    public void loginSuccess() {
-        isLoggedIn = true;
-    }
+
+
 }

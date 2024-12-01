@@ -9,8 +9,11 @@ import java.awt.*;
  * - 주요 메뉴 버튼을 배치하여 다른 화면으로 이동할 수 있도록 설계합니다.
  */
 public class LobbyUI extends JPanel {
+    private MainUI mainUI; // MainUI 필드 선언
 
-    public LobbyUI() {
+    public LobbyUI(MainUI mainUI) {
+        this.mainUI = mainUI;
+
         // 기본 레이아웃 설정
         setLayout(new BorderLayout());
 
@@ -38,7 +41,21 @@ public class LobbyUI extends JPanel {
         salesButton.addActionListener(e -> MainUI.showPanel(MainUI.SALES_PANEL)); // 판매 관리로 이동
         productButton.addActionListener(e -> MainUI.showPanel(MainUI.PRODUCTS_PANEL)); // 상품 관리로 이동
         inventoryButton.addActionListener(e -> MainUI.showPanel(MainUI.INVENTORY_PANEL)); // 재고 관리로 이동
-        managerButton.addActionListener(e -> MainUI.showPanel(MainUI.MANAGER_PANEL)); // 관리자 메뉴로 이동
+        // 관리자 메뉴 버튼에 접근 제한 추가
+        managerButton.addActionListener(e -> {
+            Integer userRoleId = mainUI.getCurrentUserRoleId();
+            System.out.println("현재 사용자 role_id: " + userRoleId);
+
+            if (userRoleId != null && userRoleId == 3) { // role_id가 3이면 관리자
+                MainUI.showPanel(MainUI.MANAGER_PANEL);
+            } else {
+                JOptionPane.showMessageDialog(null,
+                        "관리자 메뉴는 매니저만 접근 가능합니다.",
+                        "접근 제한",
+                        JOptionPane.WARNING_MESSAGE);
+            }
+        });
+
 
         // 버튼 패널을 중앙에 추가
         add(buttonPanel, BorderLayout.CENTER);
