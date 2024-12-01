@@ -90,10 +90,15 @@ public class LoginUI extends JPanel {
                 JOptionPane.showMessageDialog(this, "로그인 성공!");
                 mainUI.loginSuccess(); // 로그인 성공 시 호출
                 MainUI.showPanel(MainUI.LOBBY_PANEL);  // 로그인 성공 후 LobbyUI로 전환
+
+                // 로그인 성공 후 아이디와 비밀번호 필드 초기화
+                usernameField.setText("");
+                passwordField.setText("");
             } else {
                 JOptionPane.showMessageDialog(this, "아이디 또는 비밀번호가 잘못되었습니다.");
             }
         });
+
 
         // 회원가입 버튼 이벤트 처리
         registerButton.addActionListener(e -> {
@@ -102,8 +107,9 @@ public class LoginUI extends JPanel {
     }
 
     // 로그인 검증 메소드
+    // 로그인 검증 메소드
     private boolean isValidLogin(String username, String password) {
-        String query = "SELECT password_hash FROM Employees WHERE username = ?";
+        String query = "SELECT password_hash, role_id FROM Employees WHERE username = ?";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(query)) {
@@ -113,9 +119,15 @@ public class LoginUI extends JPanel {
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     String storedPasswordHash = rs.getString("password_hash");
-                    // 사용자가 입력한 비밀번호를 해시하여 저장된 해시 값과 비교
                     String inputPasswordHash = hashPassword(password);
-                    return inputPasswordHash.equals(storedPasswordHash);
+
+                    // 비밀번호가 일치하면 직급 정보도 가져옴
+                    if (inputPasswordHash.equals(storedPasswordHash)) {
+                        int roleId = rs.getInt("role_id");
+                        // 사용자의 직급을 MainUI에 설정
+                        mainUI.setUserRole(roleId);
+                        return true;
+                    }
                 }
             }
         } catch (SQLException e) {
@@ -123,6 +135,7 @@ public class LoginUI extends JPanel {
         }
         return false;
     }
+
 
     // 비밀번호 해싱 메소드 (간단한 예시로 SHA-256 사용)
     private String hashPassword(String password) {
