@@ -69,7 +69,7 @@ public class RegisterUI extends JPanel {
 
         JPasswordField passwordField = new JPasswordField(15);
         gbc.gridx = 1;
-        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.insets = new Insets(5, 5, 5, 5); // 기본 여백으로 되돌림
         centerPanel.add(passwordField, gbc);
 
         // 비밀번호 확인 입력
@@ -109,7 +109,7 @@ public class RegisterUI extends JPanel {
         gbc.anchor = GridBagConstraints.WEST; // 왼쪽 정렬
         centerPanel.add(backButton, gbc);
 
-        // 회원가입 버튼
+// 회원가입 버튼
         JButton registerButton = new JButton("회원가입");
         registerButton.addActionListener(e -> {
             String username = usernameField.getText();
@@ -125,26 +125,18 @@ public class RegisterUI extends JPanel {
             } else if (isUsernameExists(username)) {
                 JOptionPane.showMessageDialog(this, "이미 존재하는 아이디입니다.");
             } else {
-                // 비밀번호 해싱 후 DB에 저장
+                // 비밀번호 해싱 후 DB에 저장 (간단한 예시로 해시 사용)
                 String hashedPassword = hashPassword(password);
 
                 // DB에 사용자 등록 로직을 추가해야 합니다.
                 if (registerUser(username, hashedPassword, name, contact)) {
                     JOptionPane.showMessageDialog(this, "회원가입이 완료되었습니다!");
                     MainUI.showPanel(MainUI.LOGIN_PANEL); // 로그인 화면으로 전환
-
-                    // 텍스트 필드 초기화
-                    usernameField.setText(""); // 아이디 필드 초기화
-                    passwordField.setText(""); // 비밀번호 필드 초기화
-                    confirmPasswordField.setText(""); // 비밀번호 확인 필드 초기화
-                    nameField.setText(""); // 이름 필드 초기화
-                    contactField.setText(""); // 연락처 필드 초기화
                 } else {
                     JOptionPane.showMessageDialog(this, "회원가입에 실패했습니다.");
                 }
             }
         });
-
         gbc.gridx = 1;
         gbc.insets = new Insets(10, 10, 10, 5); // 여백 조정
         gbc.anchor = GridBagConstraints.EAST; // 오른쪽 정렬
@@ -179,7 +171,7 @@ public class RegisterUI extends JPanel {
         }
     }
 
-    // 비밀번호 해싱 메소드 (SHA-256 사용)
+    // 비밀번호 해싱 메소드 (간단한 예시로 SHA-256 사용)
     private String hashPassword(String password) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
