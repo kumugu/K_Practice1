@@ -15,7 +15,7 @@ public class LobbyUI extends JPanel {
         setLayout(new BorderLayout());
 
         // 배경색 설정
-        setBackground(new Color(128, 0, 128)); // 보라색 배경
+        setBackground(new Color(153, 50, 205)); // 보라색 배경
 
         // 중앙 버튼 패널
         JPanel buttonPanel = new JPanel();

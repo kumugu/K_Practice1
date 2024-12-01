@@ -1,18 +1,22 @@
 package ui.manager;
 
+import service.ReportDAO;
+
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.util.List;
 
 public class ReportUI extends JPanel {
     private JComboBox<String> reportTypeComboBox;
-    private JTextField startDateField;
-    private JTextField endDateField;
+    private JComboBox<String> dateRangeComboBox;
     private JTable reportTable;
     private DefaultTableModel tableModel;
+    private ReportDAO reportDao;
 
     public ReportUI() {
         setLayout(new BorderLayout());
+        reportDao = new ReportDAO();
 
         // 상단 패널: 보고서 선택 및 입력 필드
         JPanel filterPanel = new JPanel(new GridLayout(2, 1));
@@ -21,65 +25,100 @@ public class ReportUI extends JPanel {
         JPanel inputPanel = new JPanel();
         inputPanel.add(new JLabel("보고서 종류:"));
         reportTypeComboBox = new JComboBox<>(new String[]{
-                "판매 내역 보고서", "주문 내역 보고서", "급여 내역 보고서", "손익 계산 보고서"
+                "판매 내역 보고서", "주문 내역 보고서", "급여 내역 보고서"
         });
         inputPanel.add(reportTypeComboBox);
 
-        inputPanel.add(new JLabel("시작일:"));
-        startDateField = new JTextField(10);
-        inputPanel.add(startDateField);
+        inputPanel.add(new JLabel("검색 기간:"));
+        dateRangeComboBox = new JComboBox<>(new String[]{"하루", "일주일", "한 달", "일 년", "전체"});
+        inputPanel.add(dateRangeComboBox);
 
-        inputPanel.add(new JLabel("종료일:"));
-        endDateField = new JTextField(10);
-        inputPanel.add(endDateField);
-
-        filterPanel.add(inputPanel);
-
-        // 두 번째 줄: 조회 버튼
-        JPanel buttonPanel = new JPanel();
+        // 조회 버튼을 같은 줄에 배치
         JButton searchButton = new JButton("조회");
         searchButton.addActionListener(e -> fetchReportData());
-        buttonPanel.add(searchButton);
-        filterPanel.add(buttonPanel);
+        inputPanel.add(searchButton);
+
+        filterPanel.add(inputPanel);
 
         add(filterPanel, BorderLayout.NORTH);
 
         // 중앙 패널: 결과 테이블
-        tableModel = new DefaultTableModel(new Object[]{"항목", "내용"}, 0);
+        tableModel = new DefaultTableModel();
         reportTable = new JTable(tableModel);
         add(new JScrollPane(reportTable), BorderLayout.CENTER);
     }
 
-    /**
-     * 보고서 데이터를 가져와 테이블에 표시
-     */
     private void fetchReportData() {
-        // 콤보 박스에서 선택된 보고서 종류
         String reportType = (String) reportTypeComboBox.getSelectedItem();
-        String startDate = startDateField.getText();
-        String endDate = endDateField.getText();
+        String dateCondition = getDateCondition((String) dateRangeComboBox.getSelectedItem(), reportType);
 
-        // 테이블 초기화
-        tableModel.setRowCount(0);
+        clearTable();
 
-        // 예시 데이터 (실제 데이터베이스 연동 필요)
+        try {
+            List<String[]> reportData;
+            switch (reportType) {
+                case "판매 내역 보고서":
+                    setTableColumns("상품명", "판매 수량", "총 금액", "판매 날짜");
+                    reportData = reportDao.getSalesReportWithCondition(dateCondition);
+                    for (String[] row : reportData) {
+                        tableModel.addRow(new Object[]{row[0], row[1], row[2] + "원", row[3]});
+                    }
+                    break;
+                case "주문 내역 보고서":
+                    setTableColumns("재료명", "주문 수량", "총 금액", "주문 날짜", "거래처");
+                    reportData = reportDao.getOrdersReportWithCondition(dateCondition);
+                    for (String[] row : reportData) {
+                        tableModel.addRow(new Object[]{row[0], row[1], row[2] + "원", row[3], row[4]});
+                    }
+                    break;
+                case "급여 내역 보고서":
+                    setTableColumns("직원명", "급여 금액", "지급 날짜");
+                    reportData = reportDao.getSalariesReportWithCondition(dateCondition);
+                    for (String[] row : reportData) {
+                        tableModel.addRow(new Object[]{row[0], row[1] + "원", row[2]});
+                    }
+                    break;
+                default:
+                    JOptionPane.showMessageDialog(this, "알 수 없는 보고서 유형입니다.", "오류", JOptionPane.ERROR_MESSAGE);
+            }
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "데이터를 가져오는 중 오류가 발생했습니다.", "오류", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private String getDateCondition(String dateRange, String reportType) {
+        String dateColumn = "";
         switch (reportType) {
             case "판매 내역 보고서":
-                tableModel.addRow(new Object[]{"판매 내역", "예시 데이터 1"});
-                tableModel.addRow(new Object[]{"기간", startDate + " ~ " + endDate});
+                dateColumn = "sale_date";
                 break;
             case "주문 내역 보고서":
-                tableModel.addRow(new Object[]{"주문 내역", "예시 데이터 2"});
-                tableModel.addRow(new Object[]{"기간", startDate + " ~ " + endDate});
+                dateColumn = "order_date";
                 break;
             case "급여 내역 보고서":
-                tableModel.addRow(new Object[]{"급여 내역", "예시 데이터 3"});
-                tableModel.addRow(new Object[]{"기간", startDate + " ~ " + endDate});
-                break;
-            case "손익 계산 보고서":
-                tableModel.addRow(new Object[]{"손익 계산", "예시 데이터 4"});
-                tableModel.addRow(new Object[]{"기간", startDate + " ~ " + endDate});
+                dateColumn = "payment_date";
                 break;
         }
+
+        switch (dateRange) {
+            case "하루":
+                return "WHERE TRUNC(" + dateColumn + ") = TRUNC(SYSDATE)";
+            case "일주일":
+                return "WHERE TRUNC(" + dateColumn + ") >= TRUNC(SYSDATE - 7)";
+            case "한 달":
+                return "WHERE TRUNC(" + dateColumn + ") >= ADD_MONTHS(TRUNC(SYSDATE), -1)";
+            case "일 년":
+                return "WHERE TRUNC(" + dateColumn + ") >= ADD_MONTHS(TRUNC(SYSDATE), -12)";
+            default:
+                return "";  // 전체 조회
+        }
+    }
+
+    private void setTableColumns(String... columns) {
+        tableModel.setColumnIdentifiers(columns);
+    }
+
+    private void clearTable() {
+        tableModel.setRowCount(0);
     }
 }

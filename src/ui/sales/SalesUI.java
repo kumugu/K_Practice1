@@ -1,34 +1,37 @@
 package ui.sales;
 
+import db.DBConnection;
+import service.MenuDAO;
+import model.Product;
+import ui.EventManager;
+
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.util.HashMap;
-import java.util.Map;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.util.*;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class SalesUI extends JPanel {
-    private Map<String, Integer> productPrices; // 상품 데이터
-    private Map<String, Integer> cart; // 장바구니 데이터
-    private JTable cartTable; // 장바구니 테이블
-    private DefaultTableModel cartTableModel; // 테이블 모델
-    private JLabel totalPriceLabel; // 총 금액 표시
-    private JTextField quantityInput; // 숫자 입력 필드
+
+    private MenuDAO menuDAO;
+    private JPanel productPanel;
+    private DefaultTableModel cartTableModel;
+    private JTable cartTable;
+    private JLabel totalPriceLabel;
+    private JTextField quantityInput;
+    private Map<String, Integer> cart = new HashMap<>();
+    private Map<String, Integer> productPrices = new HashMap<>();
 
     public SalesUI() {
         setLayout(new BorderLayout());
-
-        // 상품 데이터 초기화
-        productPrices = new HashMap<>();
-        productPrices.put("불고기 버거", 5000);
-        productPrices.put("치즈 버거", 5500);
-        productPrices.put("감자튀김", 2000);
-        productPrices.put("콜라", 1500);
-
-        // 장바구니 초기화
-        cart = new HashMap<>();
+        menuDAO = new MenuDAO();
 
         // 좌측: 상품 패널
-        JPanel productPanel = createProductPanel();
+        productPanel = createProductPanel();
 
         // 우측: 장바구니 및 결제 패널
         JPanel cartPanel = createCartPanel();
@@ -41,53 +44,79 @@ public class SalesUI extends JPanel {
 
         // 메인 레이아웃에 추가
         add(splitPane, BorderLayout.CENTER);
+
+        EventManager.getInstance().subscribe(this::refreshProductPanel); // 갱신 로직 구독
+    }
+
+    // 상품 패널 갱신 메서드
+    private void refreshProductPanel() {
+        productPanel.removeAll(); // 기존 패널 데이터 제거
+        productPanel.add(createProductPanel()); // 새 데이터로 패널 갱신
+        productPanel.revalidate();
+        productPanel.repaint();
     }
 
     /**
-     * 좌측 상품 패널 생성
+     * 상품 패널 생성
      */
     private JPanel createProductPanel() {
         JPanel productPanel = new JPanel(new BorderLayout());
         JTabbedPane tabbedPane = new JTabbedPane();
 
-        // 카테고리 탭 추가
-        tabbedPane.addTab("버거", createProductTab("버거"));
-        tabbedPane.addTab("사이드", createProductTab("사이드"));
-        tabbedPane.addTab("음료", createProductTab("음료"));
+        // Menu 테이블에서 데이터 가져오기
+        List<Product> menuItems = menuDAO.getVisibleMenuItems();
+
+        // 카테고리별로 그룹화
+        Map<String, List<Product>> groupedByCategory = menuItems.stream()
+                .collect(Collectors.groupingBy(Product::getCategoryName));
+
+        // 카테고리별 탭 생성 (역순으로 정렬)
+        List<Map.Entry<String, List<Product>>> categoryEntries = new ArrayList<>(groupedByCategory.entrySet());
+        Collections.reverse(categoryEntries); // 역순 정렬
+
+        for (Map.Entry<String, List<Product>> entry : categoryEntries) {
+            String category = entry.getKey();
+            List<Product> products = entry.getValue();
+            JPanel categoryPanel = createCategoryPanel(products);
+            tabbedPane.addTab(category, categoryPanel);
+        }
 
         productPanel.add(tabbedPane, BorderLayout.CENTER);
         return productPanel;
     }
 
+
     /**
-     * 상품 탭 생성 (고정 레이아웃)
+     * 카테고리 패널 생성
      */
-    private JPanel createProductTab(String category) {
-        JPanel tabPanel = new JPanel(new GridLayout(4, 3, 10, 10)); // 4행 3열 고정
+    private JPanel createCategoryPanel(List<Product> products) {
+        JPanel panel = new JPanel(new GridLayout(4, 3, 10, 10)); // 4행 3열 고정
         int buttonsAdded = 0;
 
-        // 상품 버튼 추가
-        for (String product : productPrices.keySet()) {
-            if (category.equals("버거") && product.contains("버거") ||
-                    category.equals("사이드") && product.contains("감자튀김") ||
-                    category.equals("음료") && product.contains("콜라")) {
-                JButton productButton = new JButton(product + " (" + productPrices.get(product) + "원)");
-                productButton.setPreferredSize(new Dimension(150, 50)); // 버튼 크기 고정
-                productButton.addActionListener(e -> addToCart(product));
-                tabPanel.add(productButton);
-                buttonsAdded++;
-            }
+        for (Product product : products) {
+            JButton productButton = new JButton(product.getName() + " (" + product.getPrice() + "원)");
+            productPrices.put(product.getName(), product.getPrice().intValue()); // 상품 가격 저장
+            productButton.setPreferredSize(new Dimension(150, 50)); // 버튼 크기 고정
+
+            // 여기서 액션 리스너 추가
+            productButton.addActionListener(e -> {
+                quantityInput.setText(""); // 수량 입력 필드 비우기
+                addToCart(product.getName()); // 장바구니에 상품 추가
+            });
+
+            panel.add(productButton);
+            buttonsAdded++;
         }
 
         // 빈 버튼으로 남은 공간 채우기
         while (buttonsAdded < 12) {
             JButton emptyButton = new JButton();
             emptyButton.setEnabled(false); // 비활성화된 빈 버튼
-            tabPanel.add(emptyButton);
+            panel.add(emptyButton);
             buttonsAdded++;
         }
 
-        return tabPanel;
+        return panel;
     }
 
     /**
@@ -154,19 +183,11 @@ public class SalesUI extends JPanel {
     }
 
     /**
-     * 숫자 입력 처리
+     * 장바구니에 상품 추가
      */
-    private void handleNumberInput(String input) {
-        quantityInput.setText(input); // 새로 입력한 숫자로 덮어쓰기
-    }
-
-    /**
-     * 장바구니 초기화 (Clear 버튼)
-     */
-    private void clearCart() {
-        cart.clear();
+    private void addToCart(String productName) {
+        cart.put(productName, cart.getOrDefault(productName, 0) + 1);
         updateCartTable();
-        JOptionPane.showMessageDialog(this, "장바구니가 초기화되었습니다!");
     }
 
     /**
@@ -184,20 +205,13 @@ public class SalesUI extends JPanel {
                 String productName = (String) cartTableModel.getValueAt(selectedRow, 0);
                 cart.put(productName, quantity);
                 updateCartTable();
+                quantityInput.setText(""); // 수량 입력 필드를 비움
             } else {
                 JOptionPane.showMessageDialog(this, "수량을 변경할 항목을 선택하세요!");
             }
         } catch (NumberFormatException ex) {
             JOptionPane.showMessageDialog(this, "유효한 숫자를 입력하세요!");
         }
-    }
-
-    /**
-     * 장바구니에 상품 추가
-     */
-    private void addToCart(String productName) {
-        cart.put(productName, cart.getOrDefault(productName, 0) + 1);
-        updateCartTable();
     }
 
     /**
@@ -209,36 +223,81 @@ public class SalesUI extends JPanel {
             return;
         }
 
-        StringBuilder receipt = new StringBuilder();
-        int total = 0;
+        try (Connection conn = DBConnection.getConnection()) {
+            conn.setAutoCommit(false);
 
-        for (Map.Entry<String, Integer> entry : cart.entrySet()) {
-            int price = productPrices.get(entry.getKey()) * entry.getValue();
-            receipt.append(entry.getKey()).append(" * ").append(entry.getValue()).append(" = ").append(price).append("원\n");
-            total += price;
-        }
+            // Sales 테이블에 데이터 삽입
+            String insertSalesQuery = "INSERT INTO Sales (sale_id, product_id, sale_date, quantity, total_price) VALUES (sale_seq.NEXTVAL, ?, SYSDATE, ?, ?)";
+            try (PreparedStatement pstmt = conn.prepareStatement(insertSalesQuery)) {
+                for (Map.Entry<String, Integer> entry : cart.entrySet()) {
+                    int productId = menuDAO.getProductIdByName(entry.getKey());
+                    int quantity = entry.getValue();
+                    int totalPrice = productPrices.get(entry.getKey()) * quantity;
 
-        receipt.append("\n총 결제 금액: ").append(total).append("원\n결제하시겠습니까?");
+                    pstmt.setInt(1, productId);
+                    pstmt.setInt(2, quantity);
+                    pstmt.setInt(3, totalPrice);
+                    pstmt.addBatch();
+                }
 
-        int response = JOptionPane.showConfirmDialog(this, receipt.toString(), "결제 확인", JOptionPane.YES_NO_OPTION);
+                pstmt.executeBatch();
+            }
 
-        if (response == JOptionPane.YES_OPTION) {
+            conn.commit();
             JOptionPane.showMessageDialog(this, "결제가 완료되었습니다!");
             clearCart(); // 결제 후 장바구니 초기화
+
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "결제 처리 중 오류가 발생했습니다: " + e.getMessage(), "오류", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    /**
-     * 장바구니 테이블 갱신
-     */
-    private void updateCartTable() {
-        cartTableModel.setRowCount(0);
-        int total = 0;
-        for (Map.Entry<String, Integer> entry : cart.entrySet()) {
-            int price = productPrices.get(entry.getKey()) * entry.getValue();
-            cartTableModel.addRow(new Object[]{entry.getKey(), entry.getValue(), price});
-            total += price;
+    private void clearCart() {
+        // 장바구니 초기화
+        cart.clear();
+        cartTableModel.setRowCount(0); // 장바구니 테이블 초기화
+
+        // 총 금액 초기화
+        totalPriceLabel.setText("총 금액: 0원");
+
+        // 수량 입력 필드 초기화
+        quantityInput.setText(""); // 수량 입력 필드를 비움
+    }
+
+      private void handleNumberInput(String number) {
+        // 수량 입력 필드에 값 설정 (기존 값 덮어쓰기)
+        quantityInput.setText(number);
+    }
+
+    // 수량 입력 후 결제 버튼 클릭 시 처리하는 메서드에서
+    private void updateCartWithQuantity(String productName, int quantity) {
+        if (cart.containsKey(productName)) {
+            // 기존 수량을 덮어쓰기
+            cart.put(productName, quantity);
+        } else {
+            // 새 상품 추가
+            cart.put(productName, quantity);
         }
-        totalPriceLabel.setText("총 금액: " + total + "원");
+
+        // 테이블 갱신
+        updateCartTable();
+    }
+
+    // 장바구니 테이블 갱신 메서드
+    private void updateCartTable() {
+        cartTableModel.setRowCount(0); // 기존 테이블 데이터 초기화
+
+        int totalPrice = 0;
+        for (Map.Entry<String, Integer> entry : cart.entrySet()) {
+            String productName = entry.getKey();
+            int quantity = entry.getValue();
+            int productPrice = productPrices.get(productName);
+            int price = productPrice * quantity;
+            cartTableModel.addRow(new Object[]{productName, quantity, price});
+            totalPrice += price;
+        }
+
+        // 총 금액 갱신
+        totalPriceLabel.setText("총 금액: " + totalPrice + "원");
     }
 }
