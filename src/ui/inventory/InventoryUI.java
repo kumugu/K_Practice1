@@ -1,10 +1,11 @@
+// InventoryUI.java
 package ui.inventory;
 
+import model.Ingredient;
 import model.Stock;
 import service.IngredientDAO;
 import service.OrderDAO;
 import service.StockDAO;
-import ui.EventManager;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -18,6 +19,8 @@ public class InventoryUI extends JPanel {
     private JTextField supplierField, quantityField, searchField;
     private JTable stockTable;
 
+    private final IngredientDAO ingredientDAO = new IngredientDAO();
+
     public InventoryUI() {
         setLayout(new BorderLayout());
 
@@ -29,16 +32,12 @@ public class InventoryUI extends JPanel {
         JPanel middlePanel = createMiddlePanel();
         add(middlePanel, BorderLayout.CENTER);
 
-        // 데이터 로드
-        loadStockData();
+        // 하단: 전체 조회 버튼 패널
+        JPanel bottomPanel = createBottomPanel();
+        add(bottomPanel, BorderLayout.SOUTH);
 
-        // 이벤트 구독: 재료가 갱신될 때 트리거
-        EventManager.getInstance().subscribe(() -> {
-            if (ingredientComboBox != null) {
-                loadIngredientsIntoComboBox(ingredientComboBox); // 콤보박스 갱신
-            }
-            loadStockData(); // 테이블 데이터 갱신
-        });
+        // 데이터 초기 로드
+        refreshUI(); // UI 초기화
     }
 
     // 상단 패널: 주문 기능
@@ -47,7 +46,7 @@ public class InventoryUI extends JPanel {
 
         // 재료 콤보박스
         ingredientComboBox = new JComboBox<>();
-        loadIngredientsIntoComboBox(ingredientComboBox);
+        refreshIngredientComboBox(); // 초기 로드
         panel.add(new JLabel("재료:"));
         panel.add(ingredientComboBox);
 
@@ -63,23 +62,10 @@ public class InventoryUI extends JPanel {
 
         // 주문 버튼
         JButton orderButton = new JButton("주문");
+        orderButton.addActionListener(e -> handleOrder());
         panel.add(orderButton);
 
-        // 주문 버튼 클릭 시 처리
-        orderButton.addActionListener(e -> handleOrder());
-
         return panel;
-    }
-
-    // 재료 데이터를 콤보박스에 로드
-    private void loadIngredientsIntoComboBox(JComboBox<String> ingredientComboBox) {
-        StockDAO stockDAO = new StockDAO();
-        List<Stock> stockList = stockDAO.getAllStocks();
-        ingredientComboBox.removeAllItems();
-
-        for (Stock stock : stockList) {
-            ingredientComboBox.addItem(stock.getIngredientName());
-        }
     }
 
     // 중단 패널: 재고 조회
@@ -89,35 +75,59 @@ public class InventoryUI extends JPanel {
         JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
         searchField = new JTextField(15);
         JButton searchButton = new JButton("검색");
-        JButton viewAllButton = new JButton("전체 조회");
 
         searchPanel.add(new JLabel("재료명:"));
         searchPanel.add(searchField);
         searchPanel.add(searchButton);
-        searchPanel.add(viewAllButton);
 
         searchButton.addActionListener(e -> searchStockData());
-        viewAllButton.addActionListener(e -> loadStockData());
 
         panel.add(searchPanel, BorderLayout.NORTH);
 
-        stockTableModel = new DefaultTableModel(new Object[]{"재료명", "현재 재고", "단위", "최근 주문 일시"}, 0);
+        stockTableModel = new DefaultTableModel(new Object[]{"ID", "재료명", "현재 재고", "단위", "최근 주문 일시"}, 0);
         stockTable = new JTable(stockTableModel);
-        JScrollPane scrollPane = new JScrollPane(stockTable);
-        panel.add(scrollPane, BorderLayout.CENTER);
+        panel.add(new JScrollPane(stockTable), BorderLayout.CENTER);
 
         return panel;
+    }
+
+    // 하단 패널: 전체 조회 버튼
+    private JPanel createBottomPanel() {
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
+
+        // 조회 버튼 추가
+        JButton viewButton = new JButton("조회");
+        viewButton.addActionListener(e -> refreshUI()); // 클릭 시 UI 갱신
+        panel.add(viewButton);
+
+        return panel;
+    }
+
+    // UI 갱신 메서드
+    public void refreshUI() {
+        refreshIngredientComboBox(); // 재료 콤보박스 갱신
+        loadStockData(); // 재고 테이블 갱신
+    }
+
+    // 재료 콤보박스 갱신
+    private void refreshIngredientComboBox() {
+        ingredientComboBox.removeAllItems();
+        List<Ingredient> ingredients = ingredientDAO.getAllIngredients(); // DAO를 통해 재료 목록 가져오기
+        for (Ingredient ingredient : ingredients) {
+            ingredientComboBox.addItem(ingredient.getName());
+        }
     }
 
     // 재고 데이터 로드
     private void loadStockData() {
         StockDAO stockDAO = new StockDAO();
-        List<Stock> stockList = stockDAO.getAllStocks();
+        List<Stock> stockList = stockDAO.getAllStocks(); // 데이터 로드
 
-        stockTableModel.setRowCount(0);
+        stockTableModel.setRowCount(0); // 기존 데이터 초기화
 
         for (Stock stock : stockList) {
             stockTableModel.addRow(new Object[]{
+                    stock.getIngredientId(), // PK
                     stock.getIngredientName(),
                     stock.getCurrentStock(),
                     stock.getUnit(),
@@ -141,7 +151,6 @@ public class InventoryUI extends JPanel {
             double quantity = Double.parseDouble(quantityText);
 
             // IngredientDAO를 사용하여 단가 가져오기
-            IngredientDAO ingredientDAO = new IngredientDAO();
             double unitPrice = ingredientDAO.getUnitPriceByName(ingredientName);
 
             // 재료 ID 가져오기
@@ -162,7 +171,7 @@ public class InventoryUI extends JPanel {
             JOptionPane.showMessageDialog(this, "주문이 성공적으로 처리되었습니다!");
 
             // UI 업데이트
-            loadStockData();
+            refreshUI();
             quantityField.setText("");
             supplierField.setText("");
 
@@ -187,9 +196,11 @@ public class InventoryUI extends JPanel {
 
         for (Stock stock : stockList) {
             stockTableModel.addRow(new Object[]{
+                    stock.getIngredientId(),
                     stock.getIngredientName(),
                     stock.getCurrentStock(),
-                    stock.getUnit()
+                    stock.getUnit(),
+                    stock.getLastOrderDate()
             });
         }
     }

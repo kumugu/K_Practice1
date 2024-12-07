@@ -2,7 +2,6 @@ package service;
 
 import db.DBConnection;
 import model.Product;
-import ui.EventManager;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -38,8 +37,6 @@ public class ProductDAO {
         return false;
     }
 
-
-
     /**
      * 모든 상품 조회
      */
@@ -49,6 +46,7 @@ public class ProductDAO {
                 SELECT p.product_id, p.category_id, c.category_name, p.name, p.price
                 FROM Products p
                 JOIN Product_Categories c ON p.category_id = c.category_id
+                WHERE p.is_deleted = 'N'
                 """;
 
         try (Connection conn = DBConnection.getConnection();
@@ -76,10 +74,12 @@ public class ProductDAO {
      */
     public List<Product> getProductsByCategory(String categoryName) {
         List<Product> products = new ArrayList<>();
-        String query = "SELECT p.product_id, p.category_id, c.category_name, p.name, p.price " +
-                "FROM Products p " +
-                "JOIN Product_Categories c ON p.category_id = c.category_id " +
-                "WHERE c.category_name = ?";
+        String query = """
+                SELECT p.product_id, p.category_id, c.category_name, p.name, p.price
+                FROM Products p
+                JOIN Product_Categories c ON p.category_id = c.category_id
+                WHERE c.category_name = ? AND p.is_deleted = 'N'
+                """;
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(query)) {
@@ -102,12 +102,44 @@ public class ProductDAO {
         return products;
     }
 
+    /**
+     * 비활성화된 상품 조회
+     */
+    public List<Product> getInactiveProducts() {
+        List<Product> inactiveProducts = new ArrayList<>();
+        String query = """
+                SELECT p.product_id, p.category_id, c.category_name, p.name, p.price
+                FROM Products p
+                JOIN Product_Categories c ON p.category_id = c.category_id
+                WHERE p.is_deleted = 'Y'
+                """;
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query);
+             ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                inactiveProducts.add(new Product(
+                        rs.getInt("product_id"),
+                        rs.getInt("category_id"),
+                        rs.getString("category_name"),
+                        rs.getString("name"),
+                        rs.getBigDecimal("price")
+                ));
+            }
+        } catch (SQLException e) {
+            System.err.println("비활성화 상품 조회 중 오류 발생: " + e.getMessage());
+        }
+        return inactiveProducts;
+    }
 
 
-
+    /**
+     * 카테고리 목록 조회
+     */
     public List<String> getAllCategories() {
         List<String> categories = new ArrayList<>();
-        String query = "SELECT category_name FROM PRODUCT_CATEGORIES";
+        String query = "SELECT category_name FROM Product_Categories";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(query);
@@ -122,6 +154,7 @@ public class ProductDAO {
 
         return categories;
     }
+
     /**
      * 카테고리 이름으로 ID 조회
      */
@@ -141,8 +174,6 @@ public class ProductDAO {
         }
         return -1; // 존재하지 않을 경우 -1 반환
     }
-
-
 
     /**
      * 상품 수정
@@ -166,10 +197,10 @@ public class ProductDAO {
     }
 
     /**
-     * 상품 삭제
+     * 상품 논리적 삭제
      */
     public boolean deleteProduct(int productId) {
-        String query = "DELETE FROM Products WHERE product_id = ?";
+        String query = "UPDATE Products SET is_deleted = 'Y' WHERE product_id = ?";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(query)) {
@@ -184,6 +215,37 @@ public class ProductDAO {
     }
 
     /**
+     * 활성화된 상품 조회
+     */
+    public List<Product> getActiveProducts() {
+        List<Product> activeProducts = new ArrayList<>();
+        String query = """
+                SELECT p.product_id, p.category_id, c.category_name, p.name, p.price
+                FROM Products p
+                JOIN Product_Categories c ON p.category_id = c.category_id
+                WHERE p.is_deleted = 'N'
+                """;
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query);
+             ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                activeProducts.add(new Product(
+                        rs.getInt("product_id"),
+                        rs.getInt("category_id"),
+                        rs.getString("category_name"),
+                        rs.getString("name"),
+                        rs.getBigDecimal("price")
+                ));
+            }
+        } catch (SQLException e) {
+            System.err.println("활성화된 상품 조회 중 오류 발생: " + e.getMessage());
+        }
+        return activeProducts;
+    }
+
+    /**
      * 특정 상품 조회 (이름 기준)
      */
     public Product getProductByName(String name) {
@@ -191,7 +253,7 @@ public class ProductDAO {
                 SELECT p.product_id, p.category_id, c.category_name, p.name, p.price
                 FROM Products p
                 JOIN Product_Categories c ON p.category_id = c.category_id
-                WHERE p.name = ?
+                WHERE p.name = ? AND p.is_deleted = 'N'
                 """;
 
         try (Connection conn = DBConnection.getConnection();
@@ -219,7 +281,7 @@ public class ProductDAO {
      * 상품명으로 product_id 가져오기
      */
     public int getProductIdByName(String productName) {
-        String query = "SELECT product_id FROM Products WHERE name = ?";
+        String query = "SELECT product_id FROM Products WHERE name = ? AND is_deleted = 'N'";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(query)) {
@@ -236,4 +298,56 @@ public class ProductDAO {
         }
         return -1; // 상품을 찾지 못했을 경우 -1 반환
     }
+
+    /**
+     * 상품 비활성화 (논리적 삭제)
+     */
+    public boolean deactivateProduct(int productId) {
+        String query = "UPDATE Products SET is_deleted = 'Y' WHERE product_id = ?";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
+            stmt.setInt(1, productId);
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("상품 비활성화 중 오류 발생: " + e.getMessage());
+        }
+        return false;
+    }
+
+    /**
+     * 비활성화된 상품 데이터를 가져오기
+     */
+    public List<Object[]> getInactiveProductsAsObjects() throws SQLException {
+        String query = "SELECT product_id, name FROM Products WHERE is_deleted = 'Y'";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query);
+             ResultSet rs = stmt.executeQuery()) {
+
+            List<Object[]> results = new ArrayList<>();
+            while (rs.next()) {
+                results.add(new Object[]{
+                        rs.getString("product_id"),
+                        rs.getString("name"),
+                        false // 체크박스 기본값
+                });
+            }
+            return results;
+        }
+    }
+
+    /**
+     * 상품 복구 처리
+     */
+    public boolean reactivateProduct(int productId) throws SQLException {
+        String query = "UPDATE Products SET is_deleted = 'N' WHERE product_id = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
+            stmt.setInt(1, productId);
+            return stmt.executeUpdate() > 0; // 성공 여부 반환
+        }
+    }
+
 }

@@ -5,6 +5,8 @@ import service.IngredientDAO;
 import model.Ingredient;
 import model.IngredientCategory;
 import service.StockDAO;
+import ui.EventManager;
+import ui.EventTypes;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -24,8 +26,8 @@ public class RegisterIngredientUI extends JPanel {
     private final IngredientDAO ingredientDAO = new IngredientDAO();
     private RegisterProductUI registerProductUI; // RegisterProductUI 인스턴스 추가
 
-    public RegisterIngredientUI(RegisterProductUI registerProductUI) throws SQLException {
-        this.registerProductUI = registerProductUI;
+    public RegisterIngredientUI(RegisterProductUI registerProductUI) {
+        this.registerProductUI = registerProductUI; // 전달받은 RegisterProductUI 저장
         setLayout(new BorderLayout());
 
         // UI 초기화
@@ -36,6 +38,9 @@ public class RegisterIngredientUI extends JPanel {
         // 데이터 로드
         loadCategoriesIntoComboBox();
         refreshTable();
+
+        // EventManager 구독
+        EventManager.getInstance().notifyListeners(EventTypes.INGREDIENT_UPDATED);
     }
 
     // 상단 입력 패널 구성
@@ -59,9 +64,7 @@ public class RegisterIngredientUI extends JPanel {
         inputPanel.add(unitField);
 
         JButton addButton = new JButton("등록");
-        addButton.addActionListener(e -> {
-            addIngredient();
-        });
+        addButton.addActionListener(e -> addIngredient());
         inputPanel.add(addButton);
 
         add(inputPanel, BorderLayout.NORTH);
@@ -82,12 +85,22 @@ public class RegisterIngredientUI extends JPanel {
     // 하단 버튼 패널 구성
     private void setupButtonPanel() {
         JPanel buttonPanel = new JPanel();
+
+        // 조회 버튼 추가
+        JButton viewButton = new JButton("조회");
+        viewButton.addActionListener(e -> refreshTable());
+        buttonPanel.add(viewButton);
+
+        // 수정 버튼 추가
         JButton editButton = new JButton("수정");
         editButton.addActionListener(e -> editSelectedIngredient());
+        buttonPanel.add(editButton);
+
+        // 삭제 버튼 추가
         JButton deleteButton = new JButton("삭제");
         deleteButton.addActionListener(e -> deleteSelectedIngredient());
-        buttonPanel.add(editButton);
         buttonPanel.add(deleteButton);
+
         add(buttonPanel, BorderLayout.SOUTH);
     }
 
@@ -101,7 +114,7 @@ public class RegisterIngredientUI extends JPanel {
     }
 
     // 테이블 데이터 갱신
-    private void refreshTable() {
+    public void refreshTable() {
         tableModel.setRowCount(0); // 기존 데이터 초기화
         List<Ingredient> ingredients = ingredientDAO.getAllIngredients();
         for (Ingredient ingredient : ingredients) {
@@ -115,7 +128,7 @@ public class RegisterIngredientUI extends JPanel {
         }
     }
 
-    // 재료 등록
+
     private void addIngredient() {
         String category = (String) categoryComboBox.getSelectedItem();
         String name = nameField.getText();
@@ -145,34 +158,31 @@ public class RegisterIngredientUI extends JPanel {
 
             // 재료 추가
             Ingredient ingredient = new Ingredient(0, name, price, unit, categoryId, category);
-            int ingredientId = ingredientDAO.addIngredient(ingredient); // 수정된 addIngredient 메서드에서 ID 반환
+            int ingredientId = ingredientDAO.addIngredient(ingredient);
 
             if (ingredientId != -1) {
-                // 재료 등록 성공 후, 재고 추가
                 StockDAO stockDAO = new StockDAO();
                 stockDAO.addStockForNewIngredient(ingredientId);
 
                 JOptionPane.showMessageDialog(this, "재료가 등록되었습니다!");
 
-                // 테이블 및 콤보박스 갱신
                 refreshTable();
                 registerProductUI.loadIngredientsIntoComboBox();
 
-                // 입력 필드 초기화
                 nameField.setText("");
                 unitPriceField.setText("");
                 unitField.setText("");
+
+                EventManager.getInstance().notifyListeners(EventTypes.INGREDIENT_UPDATED);
             } else {
                 JOptionPane.showMessageDialog(this, "재료 등록에 실패했습니다!");
             }
         } catch (NumberFormatException ex) {
             JOptionPane.showMessageDialog(this, "단가는 숫자로 입력하세요!");
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
         }
     }
 
-    // 재료 수정
+
     private void editSelectedIngredient() {
         int selectedRow = ingredientTable.getSelectedRow();
         if (selectedRow == -1) {
@@ -180,12 +190,14 @@ public class RegisterIngredientUI extends JPanel {
             return;
         }
 
+        // 기존 데이터 가져오기
         int ingredientId = (int) tableModel.getValueAt(selectedRow, 0);
         String categoryName = (String) tableModel.getValueAt(selectedRow, 1);
         String name = (String) tableModel.getValueAt(selectedRow, 2);
         BigDecimal unitPrice = (BigDecimal) tableModel.getValueAt(selectedRow, 3);
         String unit = (String) tableModel.getValueAt(selectedRow, 4);
 
+        // 카테고리 ID 가져오기
         int categoryId = categoryDAO.getAllCategories()
                 .stream()
                 .filter(c -> c.getCategoryName().equals(categoryName))
@@ -198,17 +210,68 @@ public class RegisterIngredientUI extends JPanel {
             return;
         }
 
-        Ingredient updatedIngredient = new Ingredient(ingredientId, name, unitPrice, unit, categoryId, categoryName);
+        // 수정할 데이터 입력받기
+        JPanel inputPanel = new JPanel(new GridLayout(4, 2, 10, 10));
+        JComboBox<String> categoryComboBox = new JComboBox<>();
+        categoryDAO.getAllCategories().forEach(c -> categoryComboBox.addItem(c.getCategoryName()));
+        categoryComboBox.setSelectedItem(categoryName);
 
-        if (ingredientDAO.updateIngredient(updatedIngredient)) {
-            JOptionPane.showMessageDialog(this, "재료가 수정되었습니다!");
-            refreshTable();
-        } else {
-            JOptionPane.showMessageDialog(this, "수정에 실패했습니다!");
+        JTextField nameField = new JTextField(name);
+        JTextField unitPriceField = new JTextField(unitPrice.toString());
+        JTextField unitField = new JTextField(unit);
+
+        inputPanel.add(new JLabel("카테고리:"));
+        inputPanel.add(categoryComboBox);
+        inputPanel.add(new JLabel("재료 이름:"));
+        inputPanel.add(nameField);
+        inputPanel.add(new JLabel("단가:"));
+        inputPanel.add(unitPriceField);
+        inputPanel.add(new JLabel("단위:"));
+        inputPanel.add(unitField);
+
+        int result = JOptionPane.showConfirmDialog(this, inputPanel, "재료 수정", JOptionPane.OK_CANCEL_OPTION);
+        if (result != JOptionPane.OK_OPTION) {
+            return; // 사용자가 취소를 누른 경우
+        }
+
+        try {
+            // 사용자 입력값을 가져오기
+            String updatedCategoryName = (String) categoryComboBox.getSelectedItem();
+            String updatedName = nameField.getText();
+            BigDecimal updatedUnitPrice = new BigDecimal(unitPriceField.getText());
+            String updatedUnit = unitField.getText();
+
+            // 업데이트할 데이터 생성
+            int updatedCategoryId = categoryDAO.getAllCategories()
+                    .stream()
+                    .filter(c -> c.getCategoryName().equals(updatedCategoryName))
+                    .map(IngredientCategory::getCategoryId)
+                    .findFirst()
+                    .orElse(-1);
+
+            if (updatedCategoryId == -1) {
+                JOptionPane.showMessageDialog(this, "선택한 카테고리가 존재하지 않습니다!");
+                return;
+            }
+
+            Ingredient updatedIngredient = new Ingredient(ingredientId, updatedName, updatedUnitPrice, updatedUnit, updatedCategoryId, updatedCategoryName);
+
+            // DAO를 통해 데이터 수정
+            if (ingredientDAO.updateIngredient(updatedIngredient)) {
+                JOptionPane.showMessageDialog(this, "재료가 수정되었습니다!");
+                refreshTable();
+
+                // 재료 수정 성공 시 이벤트 발생
+                EventManager.getInstance().notifyListeners(EventTypes.INGREDIENT_UPDATED);
+            } else {
+                JOptionPane.showMessageDialog(this, "수정에 실패했습니다!");
+            }
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "단가는 숫자로 입력하세요!");
         }
     }
 
-    // 재료 삭제
+
     private void deleteSelectedIngredient() {
         int selectedRow = ingredientTable.getSelectedRow();
         if (selectedRow == -1) {
@@ -221,27 +284,14 @@ public class RegisterIngredientUI extends JPanel {
         int confirm = JOptionPane.showConfirmDialog(this, "선택한 재료를 삭제하시겠습니까?", "삭제 확인", JOptionPane.YES_NO_OPTION);
         if (confirm == JOptionPane.YES_OPTION) {
             if (ingredientDAO.deleteIngredient(ingredientId)) {
-                JOptionPane.showMessageDialog(this, "재료가 삭제되었습니다!");
+                JOptionPane.showMessageDialog(this, "재료가 삭제(비활성화)되었습니다!");
                 refreshTable();
+
+                // 재료 삭제(비활성화) 성공 시 이벤트 발생
+                EventManager.getInstance().notifyListeners(EventTypes.REFRESH_INGREDIENTS);
             } else {
                 JOptionPane.showMessageDialog(this, "삭제에 실패했습니다.");
             }
         }
     }
-
-
-
-
-    // 카테고리 콤보박스 생성
-    private JComboBox<String> createCategoryComboBox() {
-        JComboBox<String> categoryBox = new JComboBox<>();
-        List<String> categories = categoryDAO.getCategoryNames();
-        for (String category : categories) {
-            categoryBox.addItem(category);
-        }
-        return categoryBox;
-    }
-
-
-
 }

@@ -1,12 +1,21 @@
 package service;
 
 import db.DBConnection;
+import model.Report;
 
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Date;
 
 public class ReportDAO {
+    public List<Report> getAllReports() {
+        // 데이터베이스 또는 Mock 데이터를 반환
+        List<Report> reports = new ArrayList<>();
+        reports.add(new Report(1, "Sales Report", new Date(), "Details about sales."));
+        reports.add(new Report(2, "Inventory Report", new Date(), "Details about inventory."));
+        return reports;
+    }
 
     // 판매 내역 보고서
     public List<String[]> getSalesReportWithCondition(String dateCondition) {

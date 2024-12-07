@@ -1,5 +1,6 @@
 package ui.manager;
 
+import model.Report;
 import service.ReportDAO;
 
 import javax.swing.*;
@@ -8,13 +9,19 @@ import java.awt.*;
 import java.util.List;
 
 public class ProfitLossUI extends JPanel {
+    private final ReportDAO reportDAO;
     private JComboBox<String> yearComboBox;
     private JComboBox<String> monthComboBox;
     private JTable reportTable;
     private DefaultTableModel tableModel;
     private ReportDAO reportDao;
 
+
+
     public ProfitLossUI() {
+        this.reportDAO = new ReportDAO(); // ReportDAO 초기화
+        setupUI();
+        
         setLayout(new BorderLayout());
         reportDao = new ReportDAO();
 
@@ -42,6 +49,19 @@ public class ProfitLossUI extends JPanel {
         tableModel = new DefaultTableModel();  // 기본 테이블 모델
         reportTable = new JTable(tableModel);  // 테이블
         add(new JScrollPane(reportTable), BorderLayout.CENTER);  // 테이블을 스크롤 패널에 넣어서 중앙에 배치
+    }
+
+    private void setupUI() {
+        setLayout(new BorderLayout());
+
+        tableModel = new DefaultTableModel(new Object[]{"ID", "Title", "Date", "Details"}, 0);
+        JTable table = new JTable(tableModel);
+
+        add(new JScrollPane(table), BorderLayout.CENTER);
+
+        JButton refreshButton = new JButton("Refresh");
+        refreshButton.addActionListener(e -> refreshData());
+        add(refreshButton, BorderLayout.SOUTH);
     }
 
     // 손익 계산서 데이터를 가져오는 메서드
@@ -87,4 +107,18 @@ public class ProfitLossUI extends JPanel {
     private void setTableColumns(String... columns) {
         tableModel.setColumnIdentifiers(columns);  // 테이블 컬럼 이름 설정
     }
+
+    public void refreshData() {
+        tableModel.setRowCount(0); // 테이블 초기화
+        List<Report> reports = reportDAO.getAllReports(); // DAO에서 데이터 가져오기
+        for (Report report : reports) {
+            tableModel.addRow(new Object[]{
+                    report.getId(),
+                    report.getTitle(),
+                    report.getDate(),
+                    report.getDetails()
+            });
+        }
+    }
+
 }

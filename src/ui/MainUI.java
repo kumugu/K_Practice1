@@ -82,8 +82,9 @@ public class MainUI extends JFrame {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
                 if (isUserLoggedIn()) {
-                    EventManager.getInstance().notifyListeners(); // 전체 갱신 이벤트 트리거
-                    showPanel(LOBBY_PANEL); // "홈" 클릭 시 로비 화면으로 이동
+                    EventManager.getInstance().notifyListeners("REFRESH_UI");
+                    showPanel(LOBBY_PANEL); // "홈" 클릭 시 로비 화면으로
+
                 } else {
                     JOptionPane.showMessageDialog(null, "먼저 로그인해주세요.");
                     showPanel(LOGIN_PANEL); // 로그인 화면으로 이동
@@ -124,7 +125,7 @@ public class MainUI extends JFrame {
         JMenuItem salesItem = new JMenuItem("판매 관리");
         salesItem.addActionListener(e -> {
             if (isUserLoggedIn()) {
-                EventManager.getInstance().notifyListeners(); // 갱신 이벤트 발생
+                EventManager.getInstance().notifyListeners(EventTypes.REFRESH_UI);
                 showPanel(SALES_PANEL);
             } else {
                 JOptionPane.showMessageDialog(null, "먼저 로그인해주세요.");
@@ -136,7 +137,7 @@ public class MainUI extends JFrame {
         JMenuItem productItem = new JMenuItem("상품 관리");
         productItem.addActionListener(e -> {
             if (isUserLoggedIn()) {
-                EventManager.getInstance().notifyListeners(); // 갱신 이벤트 발생
+                EventManager.getInstance().notifyListeners(EventTypes.REFRESH_UI); // 적절한 이벤트 타입 전달
                 showPanel(PRODUCTS_PANEL);
             } else {
                 JOptionPane.showMessageDialog(null, "먼저 로그인해주세요.");
@@ -148,7 +149,7 @@ public class MainUI extends JFrame {
         JMenuItem inventoryItem = new JMenuItem("재고 관리");
         inventoryItem.addActionListener(e -> {
             if (isUserLoggedIn()) {
-                EventManager.getInstance().notifyListeners(); // 갱신 이벤트 발생
+                EventManager.getInstance().notifyListeners(EventTypes.REFRESH_UI); // 적절한 이벤트 타입 전달
                 showPanel(INVENTORY_PANEL);
             } else {
                 JOptionPane.showMessageDialog(null, "먼저 로그인해주세요.");
@@ -167,7 +168,7 @@ public class MainUI extends JFrame {
 
             // role_id가 3인 경우(매니저)에만 접근 허용
             if (currentUserRoleId != null && currentUserRoleId == 3) {
-                EventManager.getInstance().notifyListeners();
+                EventManager.getInstance().notifyListeners(EventTypes.REFRESH_UI);
                 showPanel(MANAGER_PANEL);
             } else {
                 JOptionPane.showMessageDialog(null,

@@ -15,24 +15,15 @@ public class StockDAO {
     // 전체 재고 조회
     public List<Stock> getAllStocks() {
         List<Stock> stockList = new ArrayList<>();
-        String query = """
-        SELECT 
-            i.ingredient_id, i.name AS ingredient_name,
-            COALESCE(s.current_stock, 0) AS current_stock,
-            i.unit,
-            MAX(o.order_date) AS last_order_date
-        FROM 
-            Ingredients i
-        LEFT JOIN 
-            Stock s ON i.ingredient_id = s.ingredient_id
-        LEFT JOIN 
-            Orders o ON i.ingredient_id = o.ingredient_id
-        GROUP BY 
-            i.ingredient_id, i.name, s.current_stock, i.unit
-    """;
+        String query = "SELECT s.ingredient_id, i.name AS ingredient_name, s.current_stock, i.unit, o.order_date AS last_order_date " +
+                "FROM Stock s " +
+                "JOIN Ingredients i ON s.ingredient_id = i.ingredient_id " +
+                "LEFT JOIN (SELECT ingredient_id, MAX(order_date) AS order_date FROM Orders GROUP BY ingredient_id) o " +
+                "ON s.ingredient_id = o.ingredient_id " +
+                "ORDER BY s.ingredient_id";
 
-        try (Connection connection = DBConnection.getConnection();
-             PreparedStatement stmt = connection.prepareStatement(query);
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query);
              ResultSet rs = stmt.executeQuery()) {
 
             while (rs.next()) {
@@ -42,14 +33,16 @@ public class StockDAO {
                 stock.setCurrentStock(rs.getDouble("current_stock"));
                 stock.setUnit(rs.getString("unit"));
                 stock.setLastOrderDate(rs.getTimestamp("last_order_date"));
-
                 stockList.add(stock);
             }
-        } catch (SQLException ex) {
-            ex.printStackTrace();
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
+
         return stockList;
     }
+
+
 
     public List<Stock> searchStockByName(String name) {
         List<Stock> stockList = new ArrayList<>();

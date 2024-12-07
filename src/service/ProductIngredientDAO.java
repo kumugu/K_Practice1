@@ -1,6 +1,7 @@
 package service;
 
 import db.DBConnection;
+import model.Ingredient;
 import model.ProductIngredient;
 
 import javax.swing.*;
@@ -27,8 +28,6 @@ public class ProductIngredientDAO {
             addProductIngredient(productIngredient);
         }
     }
-
-
 
     /**
      * 상품-재료 매핑 등록
@@ -61,6 +60,31 @@ public class ProductIngredientDAO {
             e.printStackTrace();
         }
         return false;
+    }
+
+
+    // ProductIngredientDAO 클래스에서 추가
+    public List<Ingredient> getAllIngredients() {
+        List<Ingredient> ingredients = new ArrayList<>();
+        String query = "SELECT * FROM Ingredients"; // SQL 수정 가능
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query);
+             ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                ingredients.add(new Ingredient(
+                        rs.getInt("ingredient_id"),
+                        rs.getString("name"),
+                        rs.getBigDecimal("unit_price"),
+                        rs.getString("unit"),
+                        rs.getInt("category_id"),
+                        rs.getString("category_name") // 예시: 추가 조인으로 가져온 카테고리 이름
+                ));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return ingredients;
     }
 
 

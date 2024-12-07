@@ -1,5 +1,7 @@
 package ui.manager;
 
+import ui.EventManager;
+import ui.EventTypes;
 import service.EmployeeDAO;
 import model.Employee;
 
@@ -60,8 +62,14 @@ public class EmployeesManagementUI extends JPanel {
         deleteButton.addActionListener(e -> deleteSelectedUser());
         paySalaryButton.addActionListener(e -> paySalary());
 
+        EventManager.getInstance().subscribe(EventTypes.EMPLOYEE_UPDATED, this::refreshTable);
+
         // 초기 데이터 로드
         showAllUsers();
+    }
+
+    public void refreshTable() {
+        // 테이블 데이터 갱신 로직
     }
 
     /**
@@ -95,6 +103,7 @@ public class EmployeesManagementUI extends JPanel {
                     employee.getHireDate().toString()
             });
         }
+
     }
 
     /**
@@ -164,10 +173,12 @@ public class EmployeesManagementUI extends JPanel {
             int updatedRole = roleComboBox.getSelectedIndex() + 1; // 직급 ID로 변환
 
             // 실제 DB 업데이트
-            if (employeeDAO.updateEmployee(userId, updatedName, updatedContact, updatedRole)) {
+            Employee updatedEmployee = new Employee(userId, null, null, updatedName, updatedContact, null, updatedRole);
+            if (employeeDAO.updateEmployee(updatedEmployee)) {
                 JOptionPane.showMessageDialog(this, "직원 정보가 수정되었습니다!");
 
-                // 테이블 업데이트
+
+            // 테이블 업데이트
                 tableModel.setValueAt(updatedName, selectedRow, 1);
                 tableModel.setValueAt(updatedContact, selectedRow, 2);
                 tableModel.setValueAt(roleComboBox.getSelectedItem().toString(), selectedRow, 3);
@@ -201,6 +212,7 @@ public class EmployeesManagementUI extends JPanel {
             } else {
                 JOptionPane.showMessageDialog(this, "직원 삭제에 실패했습니다.");
             }
+
         }
     }
 

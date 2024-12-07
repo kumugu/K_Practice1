@@ -1,6 +1,9 @@
 package ui.manager;
 
 import service.ReportDAO;
+import model.Report;
+import ui.EventManager;
+import ui.EventTypes;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -8,13 +11,17 @@ import java.awt.*;
 import java.util.List;
 
 public class ReportUI extends JPanel {
+    private final ReportDAO reportDAO;
     private JComboBox<String> reportTypeComboBox;
     private JComboBox<String> dateRangeComboBox;
     private JTable reportTable;
     private DefaultTableModel tableModel;
     private ReportDAO reportDao;
 
+
+
     public ReportUI() {
+        this.reportDAO = new ReportDAO(); // ReportDAO 초기화
         setLayout(new BorderLayout());
         reportDao = new ReportDAO();
 
@@ -46,6 +53,13 @@ public class ReportUI extends JPanel {
         tableModel = new DefaultTableModel();
         reportTable = new JTable(tableModel);
         add(new JScrollPane(reportTable), BorderLayout.CENTER);
+
+
+        // 이벤트 구독 추가
+        EventManager.getInstance().subscribe(EventTypes.REPORT_UPDATED, this::refreshData);
+
+
+
     }
 
     private void fetchReportData() {
@@ -121,4 +135,19 @@ public class ReportUI extends JPanel {
     private void clearTable() {
         tableModel.setRowCount(0);
     }
+
+    public void refreshData() {
+        tableModel.setRowCount(0); // 테이블 초기화
+        List<Report> reports = reportDAO.getAllReports(); // DAO에서 데이터 가져오기
+        for (Report report : reports) {
+            tableModel.addRow(new Object[]{
+                    report.getId(),
+                    report.getTitle(),
+                    report.getDate(),
+                    report.getDetails()
+            });
+        }
+    }
+
+
 }

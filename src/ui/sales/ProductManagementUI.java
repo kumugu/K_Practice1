@@ -4,6 +4,7 @@ import model.Product;
 import service.MenuDAO;
 import service.ProductDAO;
 import ui.EventManager;
+import ui.EventTypes;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -31,8 +32,9 @@ public class ProductManagementUI extends JPanel {
 
         setLayout(new BorderLayout());
 
-        // 이벤트 구독: "홈"에서 갱신될 때 트리거
-        EventManager.getInstance().subscribe(this::refreshAllTables);
+//        // 이벤트 구독: "홈"에서 갱신될 때 트리거
+//        EventManager.getInstance().subscribe(EventTypes.REFRESH_PRODUCTS, this::refreshAllTables);
+
 
         // UI 구성
         JPanel middlePanel = createMiddlePanel(); // 중단 패널 생성
@@ -41,10 +43,13 @@ public class ProductManagementUI extends JPanel {
         add(middlePanel, BorderLayout.CENTER);
         add(bottomPanel, BorderLayout.SOUTH);
 
-        // 초기 데이터 로드
-        refreshAllTables();
+        // 데이터 초기화
+        loadInitialData();
     }
 
+    private void loadInitialData() {
+        refreshAllTables(); // 메시지 출력 없이 데이터 로드
+    }
     /**
      * 중단 패널 - 카테고리별 등록 메뉴 조회
      */
@@ -166,10 +171,15 @@ public class ProductManagementUI extends JPanel {
         JButton moveDownButton = new JButton("아래로");
         JButton registerButton = new JButton("등록");
 
+        // 갱신 버튼 추가
+        JButton refreshButton = new JButton("갱신");
+        refreshButton.addActionListener(e -> refreshAllTables()); // 갱신 버튼 이벤트
+
         // 버튼 추가
         panel.add(moveUpButton);
         panel.add(moveDownButton);
         panel.add(registerButton);
+        panel.add(refreshButton); // 갱신 버튼 추가
 
         // "위로" 버튼 이벤트
         moveUpButton.addActionListener(e -> handleRowMovement(categoryTables, tableModels, -1));
@@ -296,7 +306,10 @@ public class ProductManagementUI extends JPanel {
      */
     private void refreshAllTables() {
         for (Map.Entry<String, DefaultTableModel> entry : tableModels.entrySet()) {
-            loadCategoryData(entry.getKey(), entry.getValue());
+            String category = entry.getKey();
+            DefaultTableModel tableModel = entry.getValue();
+            loadCategoryData(category, tableModel); // 카테고리별 데이터 로드
         }
     }
+
 }

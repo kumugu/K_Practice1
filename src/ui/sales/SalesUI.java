@@ -4,6 +4,7 @@ import db.DBConnection;
 import service.MenuDAO;
 import model.Product;
 import ui.EventManager;
+import ui.EventTypes;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -45,7 +46,7 @@ public class SalesUI extends JPanel {
         // 메인 레이아웃에 추가
         add(splitPane, BorderLayout.CENTER);
 
-        EventManager.getInstance().subscribe(this::refreshProductPanel); // 갱신 로직 구독
+        EventManager.getInstance().subscribe(EventTypes.PRODUCT_UPDATED, this::refreshProductPanel); // 적절한 이벤트 타입 추가
     }
 
     // 상품 패널 갱신 메서드
@@ -174,6 +175,14 @@ public class SalesUI extends JPanel {
         enterButton.addActionListener(e -> updateCartQuantity());
         numberPadPanel.add(enterButton);
 
+        JButton refreshButton = new JButton("Refresh");
+        refreshButton.addActionListener(e -> refreshProductPanel());
+        numberPadPanel.add(refreshButton);
+
+        // 공백 추가
+        JLabel spacer = new JLabel();
+        numberPadPanel.add(spacer);
+
         JButton payButton = new JButton("Pay");
         payButton.setBackground(Color.GREEN);
         payButton.addActionListener(e -> processPayment());
@@ -181,6 +190,7 @@ public class SalesUI extends JPanel {
 
         return numberPadPanel;
     }
+
 
     /**
      * 장바구니에 상품 추가
@@ -223,7 +233,9 @@ public class SalesUI extends JPanel {
             return;
         }
 
-        try (Connection conn = DBConnection.getConnection()) {
+        Connection conn = null;
+        try {
+            conn = DBConnection.getConnection();
             conn.setAutoCommit(false);
 
             // Sales 테이블에 데이터 삽입
@@ -239,7 +251,6 @@ public class SalesUI extends JPanel {
                     pstmt.setInt(3, totalPrice);
                     pstmt.addBatch();
                 }
-
                 pstmt.executeBatch();
             }
 
@@ -248,9 +259,27 @@ public class SalesUI extends JPanel {
             clearCart(); // 결제 후 장바구니 초기화
 
         } catch (SQLException e) {
-            JOptionPane.showMessageDialog(this, "결제 처리 중 오류가 발생했습니다: " + e.getMessage(), "오류", JOptionPane.ERROR_MESSAGE);
+            e.printStackTrace();
+            if (conn != null) {
+                try {
+                    conn.rollback();
+                    JOptionPane.showMessageDialog(this, "결제 처리 중 오류가 발생했습니다: " + e.getMessage(), "오류", JOptionPane.ERROR_MESSAGE);
+                } catch (SQLException rollbackEx) {
+                    rollbackEx.printStackTrace();
+                }
+            }
+        } finally {
+            if (conn != null) {
+                try {
+                    conn.close();
+                } catch (SQLException closeEx) {
+                    closeEx.printStackTrace();
+                }
+            }
         }
     }
+
+
 
     private void clearCart() {
         // 장바구니 초기화
